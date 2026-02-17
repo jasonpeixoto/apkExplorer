@@ -7,13 +7,15 @@ APK Deep Explorer is a high-performance Python-based GUI tool built with **PyQt5
 
 ## 🌟 Key Features
 
-* **Nested Inspection:** View files inside APKs that are themselves inside a ZIP file—all without extracting to disk.
-* **In-Memory Processing:** Uses io.BytesIO to read nested archives in RAM for speed and security.
-* **High-Contrast Dark Mode UI:** Features a neon color scheme (Cyan and Green) for perfect readability on dark backgrounds.
-* **Deep Search:** Instantly scan every file across all nested APKs and highlight matches in Orange.
+* **Nested Inspection:** View files inside APKs that are themselves inside a ZIP file—all in-memory without disk bloat.
+* **Instant Path Display:** A dedicated path label shows the full source location of your active ZIP file.
+* **Live Multi-Term Search:** Search for multiple keywords at once (e.g., manifest png xml) with real-time Orange highlighting.
+* **Smart Filtering:** A "Show Matches Only" toggle that instantly hides all files and APKs that don't match your search terms.
+* **Auto-Scroll Focus:** The UI automatically "snaps" and scrolls to the first match found as you type or filter.
+* **High-Contrast Dark Mode:** Neon Green (APKs) and Electric Cyan (Internal files) coding for maximum readability on dark backgrounds.
 * **Smart Extraction:**
-    * **Full Extract:** Right-click an APK to extract and automatically unzip its entire contents into a folder.
-    * **Selective Extract:** Right-click a specific file inside an APK to pull just that one file out.
+    * **Full Extract & Unzip:** Right-click an APK to extract and automatically unzip its entire contents into a new folder.
+    * **Targeted Extract:** Right-click a specific inner file to extract just that one asset.
 
 ---
 
@@ -23,7 +25,7 @@ APK Deep Explorer is a high-performance Python-based GUI tool built with **PyQt5
 Ensure you have Python 3.8+ installed on your system.
 
 ### 2. Install Dependencies
-This project relies on PyQt5. You can install it via pip:
+This project relies on PyQt5. You can install it using:
 pip install PyQt5
 
 ---
@@ -32,25 +34,27 @@ pip install PyQt5
 
 1. Clone or download the repository.
 2. Navigate to the directory in your terminal:
-   cd apkExplorer/
+   cd /Users/jpeixoto/PythonProjects/apkExplorer/
 3. Launch the application:
    python3 apkExplorer.py
 
 ---
 
-## 📖 Usage Examples
+## 📖 Usage & Examples
 
-### 1. Loading your Archive
-Click the SELECT MAIN ZIP FILE button. Once selected, the program will automatically perform a deep-scan and expand all APK contents into a visual tree.
+### 1. Source Tracking
+Once a file is loaded, the path is displayed clearly under the main button. This ensures you always know which version of a ZIP you are analyzing.
 
-### 2. Finding Specific Files
-Use the search bar at the top to find assets or manifest files.
-* Example: Type classes.dex and hit Enter.
-* Result: Every classes.dex in every APK will be highlighted in Orange.
+### 2. Instant Live Filtering
+Check the Show Matches Only box and start typing. The tree will live-update, hiding everything except your specific targets.
+* Example: Typing "icon" will hide all non-image folders, leaving only icon assets visible.
 
-### 3. Quick Extraction
-* Scenario: You found a specific image in app_v1.apk and want it.
-* Action: Right-click the file -> "Extract this file only" -> Choose your save location.
+### 3. Space-Separated Search
+Need to find different types of files at once? Just use a space.
+* Example: Typing "classes.dex resources.arsc" will highlight both file types across every APK in the archive.
+
+### 4. Automatic "Snap-to-Result"
+As you refine your search, the explorer automatically scrolls to the first match it finds, eliminating the need to hunt through thousands of lines manually.
 
 ---
 

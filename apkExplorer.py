@@ -5,7 +5,7 @@ import os
 import shutil
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTreeView, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QPushButton, QMessageBox, QHeaderView,
-                             QLineEdit, QMenu)
+                             QLineEdit, QMenu, QLabel, QCheckBox)
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QColor, QBrush
 from PyQt5.QtCore import Qt
 
@@ -13,7 +13,7 @@ from PyQt5.QtCore import Qt
 class DeepApkExplorer(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Pro APK Explorer - High Contrast Edition")
+        self.setWindowTitle("Pro APK Explorer - Jason Peixoto")
         self.main_zip_path = None
 
         self.model = QStandardItemModel()
@@ -25,30 +25,13 @@ class DeepApkExplorer(QMainWindow):
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
 
-        # Adjust Header for visibility
         header = self.tree.header()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         self.tree.setColumnWidth(1, 150)
 
-        # Search UI
-        search_layout = QHBoxLayout()
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search inside APKs (Case Insensitive)...")
-        self.search_input.setStyleSheet("padding: 8px; font-size: 14px; border: 1px solid #555;")
-
-        btn_search = QPushButton("Find & Highlight")
-        btn_search.setStyleSheet("""
-            QPushButton { background-color: #0078d7; color: white; padding: 8px 15px; font-weight: bold; }
-            QPushButton:hover { background-color: #005a9e; }
-        """)
-        btn_search.clicked.connect(self.search_and_highlight)
-        self.search_input.returnPressed.connect(self.search_and_highlight)
-
-        search_layout.addWidget(self.search_input)
-        search_layout.addWidget(btn_search)
-
         layout = QVBoxLayout()
+
         btn_open = QPushButton("SELECT MAIN ZIP FILE")
         btn_open.setStyleSheet("""
             QPushButton { background-color: #444; color: #00FF00; font-size: 18px; 
@@ -57,7 +40,24 @@ class DeepApkExplorer(QMainWindow):
         """)
         btn_open.clicked.connect(self.open_and_process_zip)
 
+        self.path_label = QLabel("No file selected")
+        self.path_label.setStyleSheet("color: #AAAAAA; font-style: italic; padding: 5px;")
+
+        search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search multiple files (space separated)...")
+        self.search_input.setStyleSheet("padding: 8px; font-size: 14px; border: 1px solid #555;")
+        self.search_input.textChanged.connect(self.search_and_highlight)
+
+        self.filter_checkbox = QCheckBox("Show Matches Only")
+        self.filter_checkbox.setStyleSheet("color: white; padding-left: 10px;")
+        self.filter_checkbox.stateChanged.connect(self.search_and_highlight)
+
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.filter_checkbox)
+
         layout.addWidget(btn_open)
+        layout.addWidget(self.path_label)
         layout.addLayout(search_layout)
         layout.addWidget(self.tree)
 
@@ -75,6 +75,7 @@ class DeepApkExplorer(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Open Zip", "", "Zip Files (*.zip)")
         if not path: return
         self.main_zip_path = path
+        self.path_label.setText(f"Source: {path}")
         self.model.removeRows(0, self.model.rowCount())
         self.tree.setUpdatesEnabled(False)
 
@@ -86,7 +87,6 @@ class DeepApkExplorer(QMainWindow):
                     parent_item.setData(("apk", file_info.filename, None), Qt.UserRole)
 
                     if file_info.filename.lower().endswith('.apk'):
-                        # APK names in Light Green
                         parent_item.setForeground(QColor("#90EE90"))
                         self.expand_apk_contents(main_z, file_info.filename, parent_item)
 
@@ -105,13 +105,62 @@ class DeepApkExplorer(QMainWindow):
                     for info in apk_z.infolist():
                         child_name = QStandardItem(f"  └─ {info.filename}")
                         child_size = QStandardItem(f"{info.file_size:,} bytes")
-
-                        # Inner files in bright Cyan for high contrast on black
                         child_name.setForeground(QColor("#00FFFF"))
                         child_name.setData(("file", info.filename, apk_name), Qt.UserRole)
                         parent_node.appendRow([child_name, child_size])
         except:
             parent_node.appendRow([QStandardItem("[Unreadable]"), QStandardItem("-")])
+
+    def search_and_highlight(self):
+        raw_query = self.search_input.text().lower()
+        queries = [q.strip() for q in raw_query.split(" ") if q.strip()]
+
+        hide_unmatched = self.filter_checkbox.isChecked()
+        highlight_brush = QBrush(QColor("#D35400"))
+
+        self.tree.setUpdatesEnabled(False)
+        self.first_match_index = None  # Reset for auto-scroll
+
+        for i in range(self.model.rowCount()):
+            self._recursive_search(self.model.item(i), queries, highlight_brush, hide_unmatched)
+
+        if self.first_match_index and queries:
+            self.tree.scrollTo(self.first_match_index)
+
+        self.tree.setUpdatesEnabled(True)
+
+    def _recursive_search(self, item, queries, brush, hide_unmatched):
+        item_text = item.text().lower()
+
+        is_match = False
+        if not queries:
+            is_match = True
+        else:
+            for q in queries:
+                if q in item_text:
+                    is_match = True
+                    break
+
+        item.setBackground(brush if (is_match and queries) else Qt.transparent)
+
+        # Track the very first match found in the whole tree
+        if is_match and queries and self.first_match_index is None:
+            self.first_match_index = item.index()
+
+        any_child_matched = False
+        for i in range(item.rowCount()):
+            if self._recursive_search(item.child(i), queries, brush, hide_unmatched):
+                any_child_matched = True
+
+        should_be_visible = is_match or any_child_matched
+        parent_idx = item.parent().index() if item.parent() else self.tree.rootIndex()
+
+        if hide_unmatched and queries:
+            self.tree.setRowHidden(item.row(), parent_idx, not should_be_visible)
+        else:
+            self.tree.setRowHidden(item.row(), parent_idx, False)
+
+        return should_be_visible
 
     def show_context_menu(self, position):
         index = self.tree.indexAt(position)
@@ -122,9 +171,7 @@ class DeepApkExplorer(QMainWindow):
 
         item_type, internal_path, parent_apk = data
         menu = QMenu()
-        # Force menu to be readable in Dark Mode
-        menu.setStyleSheet(
-            "QMenu { background-color: #333; color: white; } QMenu::item:selected { background-color: #555; }")
+        menu.setStyleSheet("QMenu { background-color: #333; color: white; }")
 
         if item_type == "apk":
             act = menu.addAction("Extract and Unzip APK content...")
@@ -164,22 +211,6 @@ class DeepApkExplorer(QMainWindow):
             QMessageBox.information(self, "Success", "File extracted.")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
-
-    def search_and_highlight(self):
-        query = self.search_input.text().lower()
-        if not query: return
-        # Using Orange for highlight - high visibility on black/grey
-        highlight_brush = QBrush(QColor("#D35400"))
-        for i in range(self.model.rowCount()):
-            self._recursive_search(self.model.item(i), query, highlight_brush)
-
-    def _recursive_search(self, item, query, brush):
-        is_match = query in item.text().lower()
-        item.setBackground(brush if is_match else Qt.transparent)
-        if is_match:
-            self.tree.scrollTo(item.index())
-        for i in range(item.rowCount()):
-            self._recursive_search(item.child(i), query, brush)
 
 
 if __name__ == "__main__":
