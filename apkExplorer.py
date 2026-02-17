@@ -6,9 +6,38 @@ import shutil
 import re
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTreeView, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QPushButton, QMessageBox, QHeaderView,
-                             QLineEdit, QMenu, QLabel, QCheckBox)
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QColor, QBrush
+                             QLineEdit, QMenu, QLabel, QCheckBox, QDialog, QTextEdit, QScrollArea)
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QColor, QBrush, QPixmap, QImage
 from PyQt5.QtCore import Qt
+
+
+class PreviewDialog(QDialog):
+    def __init__(self, name, content, is_image=False, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Preview: {name}")
+        self.resize(800, 600)
+        layout = QVBoxLayout(self)
+        self.setStyleSheet("background-color: #1E1E1E; color: #D4D4D4;")
+
+        if is_image:
+            scroll = QScrollArea()
+            label = QLabel()
+            pixmap = QPixmap()
+            pixmap.loadFromData(content)
+            label.setPixmap(pixmap)
+            label.setAlignment(Qt.AlignCenter)
+            scroll.setWidget(label)
+            scroll.setWidgetResizable(True)
+            layout.addWidget(scroll)
+        else:
+            text_edit = QTextEdit()
+            text_edit.setReadOnly(True)
+            try:
+                text_edit.setPlainText(content.decode('utf-8', errors='replace'))
+            except:
+                text_edit.setPlainText("[Binary Content - Cannot Preview]")
+            text_edit.setStyleSheet("font-family: 'Consolas', monospace; font-size: 13px; border: none;")
+            layout.addWidget(text_edit)
 
 
 class DeepApkExplorer(QMainWindow):
@@ -16,7 +45,7 @@ class DeepApkExplorer(QMainWindow):
         super().__init__()
         self.setWindowTitle("Pro APK Explorer - Jason Peixoto")
         self.main_zip_path = None
-        self.highlight_color = "#D35400"  # Orange
+        self.highlight_color = "#D35400"
 
         self.model = QStandardItemModel()
         self.model.setHorizontalHeaderLabels(['File Structure', 'Size'])
@@ -27,6 +56,9 @@ class DeepApkExplorer(QMainWindow):
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
 
+        # DOUBLE CLICK TRIGGER
+        self.tree.doubleClicked.connect(self.on_double_click)
+
         header = self.tree.header()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.Interactive)
@@ -36,10 +68,10 @@ class DeepApkExplorer(QMainWindow):
         main_layout.setContentsMargins(10, 10, 10, 10)
 
         btn_open = QPushButton("SELECT MAIN ZIP FILE")
-        btn_open.setStyleSheet(f"""
-            QPushButton {{ background-color: #444; color: #00FF00; font-size: 18px; 
-                          font-weight: bold; padding: 15px; border: 2px solid #00FF00; }}
-            QPushButton:hover {{ background-color: #555; }}
+        btn_open.setStyleSheet("""
+            QPushButton { background-color: #444; color: #00FF00; font-size: 18px; 
+                          font-weight: bold; padding: 15px; border: 2px solid #00FF00; }
+            QPushButton:hover { background-color: #555; }
         """)
         btn_open.clicked.connect(self.open_and_process_zip)
 
@@ -84,6 +116,11 @@ class DeepApkExplorer(QMainWindow):
             self.tree.setColumnWidth(0, int(total_width * 0.9))
             self.tree.setColumnWidth(1, total_width - int(total_width * 0.9))
 
+    def create_item(self, text):
+        item = QStandardItem(text)
+        item.setEditable(False)  # GRID LOCK: NO EDITING
+        return item
+
     def open_and_process_zip(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open Zip", "", "Zip Files (*.zip)")
         if not path: return
@@ -95,8 +132,8 @@ class DeepApkExplorer(QMainWindow):
         try:
             with zipfile.ZipFile(path, 'r') as main_z:
                 for file_info in main_z.infolist():
-                    parent_item = QStandardItem(file_info.filename)
-                    size_item = QStandardItem(f"{file_info.file_size:,} bytes")
+                    parent_item = self.create_item(file_info.filename)
+                    size_item = self.create_item(f"{file_info.file_size:,} bytes")
                     parent_item.setData(("apk", file_info.filename, None), Qt.UserRole)
 
                     if file_info.filename.lower().endswith('.apk'):
@@ -118,13 +155,34 @@ class DeepApkExplorer(QMainWindow):
                 apk_data = io.BytesIO(apk_file.read())
                 with zipfile.ZipFile(apk_data) as apk_z:
                     for info in apk_z.infolist():
-                        child_name = QStandardItem(f"  └─ {info.filename}")
-                        child_size = QStandardItem(f"{info.file_size:,} bytes")
+                        child_name = self.create_item(f"  └─ {info.filename}")
+                        child_size = self.create_item(f"{info.file_size:,} bytes")
                         child_name.setForeground(QColor("#00FFFF"))
                         child_name.setData(("file", info.filename, apk_name), Qt.UserRole)
                         parent_node.appendRow([child_name, child_size])
         except:
-            parent_node.appendRow([QStandardItem("[Unreadable]"), QStandardItem("-")])
+            parent_node.appendRow([self.create_item("[Unreadable]"), self.create_item("-")])
+
+    def on_double_click(self, index):
+        item = self.model.itemFromIndex(index)
+        data = item.data(Qt.UserRole)
+        if not data or data[0] != "file": return
+
+        item_type, internal_path, parent_apk = data
+        clean_path = internal_path.replace("  └─ ", "").strip()
+
+        try:
+            with zipfile.ZipFile(self.main_zip_path, 'r') as z:
+                with z.open(parent_apk) as apk_file:
+                    apk_data = io.BytesIO(apk_file.read())
+                    with zipfile.ZipFile(apk_data) as inner_z:
+                        with inner_z.open(clean_path) as target:
+                            content = target.read()
+                            is_img = clean_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))
+                            prev = PreviewDialog(clean_path, content, is_img, self)
+                            prev.exec_()
+        except Exception as e:
+            QMessageBox.warning(self, "Preview Error", f"Could not open file: {e}")
 
     def search_and_highlight(self):
         raw_input = self.search_input.text()
@@ -187,11 +245,8 @@ class DeepApkExplorer(QMainWindow):
         index = self.tree.indexAt(position)
         menu = QMenu()
         menu.setStyleSheet("QMenu { background-color: #333; color: white; }")
-
-        # Option 1: Extract Highlighted (Global)
         extract_all_act = menu.addAction("⚡ Extract ALL Highlighted Files (Maintain Folders)")
 
-        # Option 2: Individual Item Actions
         item_act = None
         if index.isValid():
             menu.addSeparator()
@@ -202,7 +257,6 @@ class DeepApkExplorer(QMainWindow):
                 item_act = menu.addAction(f"Extract this {'APK' if item_type == 'apk' else 'File'} only...")
 
         res = menu.exec_(self.tree.viewport().mapToGlobal(position))
-
         if res == extract_all_act:
             self.bulk_extract_highlighted()
         elif res == item_act and index.isValid():
@@ -215,20 +269,14 @@ class DeepApkExplorer(QMainWindow):
     def bulk_extract_highlighted(self):
         dest_base = QFileDialog.getExistingDirectory(self, "Select Bulk Extraction Folder")
         if not dest_base: return
-
-        highlighted_files = []  # list of (parent_apk, internal_path)
-
-        # Find all highlighted files in the model
+        highlighted_files = []
         for i in range(self.model.rowCount()):
             self._find_highlighted_recursive(self.model.item(i), highlighted_files)
 
-        if not highlighted_files:
-            QMessageBox.warning(self, "No Matches", "No highlighted files found to extract.")
-            return
+        if not highlighted_files: return
 
         try:
             with zipfile.ZipFile(self.main_zip_path, 'r') as main_z:
-                # Group by APK to avoid opening the same APK multiple times
                 apk_groups = {}
                 for apk, path in highlighted_files:
                     if apk not in apk_groups: apk_groups[apk] = []
@@ -239,27 +287,19 @@ class DeepApkExplorer(QMainWindow):
                         apk_data = io.BytesIO(apk_file.read())
                         with zipfile.ZipFile(apk_data) as inner_z:
                             for f_path in files:
-                                # Clean the internal path (remove the tree prefix symbols)
                                 clean_path = f_path.replace("  └─ ", "").strip()
-                                # Create destination path maintaining structure
-                                # Folder structure: [Dest]/[APK_Name]/[Internal_Path]
                                 out_path = os.path.join(dest_base, os.path.splitext(apk_name)[0], clean_path)
                                 os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
                                 with inner_z.open(clean_path) as source, open(out_path, 'wb') as target:
                                     shutil.copyfileobj(source, target)
-
-            QMessageBox.information(self, "Success", f"Extracted {len(highlighted_files)} files to:\n{dest_base}")
+            QMessageBox.information(self, "Success", f"Extracted {len(highlighted_files)} files.")
         except Exception as e:
-            QMessageBox.critical(self, "Extraction Error", str(e))
+            QMessageBox.critical(self, "Error", str(e))
 
     def _find_highlighted_recursive(self, item, result_list):
-        # Check if it's a file (not a root APK) and is highlighted
         data = item.data(Qt.UserRole)
-        if data and data[0] == "file":
-            if item.background().color().name().upper() == self.highlight_color.upper():
-                result_list.append((data[2], data[1]))  # (parent_apk, internal_path)
-
+        if data and data[0] == "file" and item.background().color().name().upper() == self.highlight_color.upper():
+            result_list.append((data[2], data[1]))
         for i in range(item.rowCount()):
             self._find_highlighted_recursive(item.child(i), result_list)
 

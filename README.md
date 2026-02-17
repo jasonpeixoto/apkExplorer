@@ -9,12 +9,12 @@ APK Deep Explorer is a high-performance Python-based GUI tool built with **PyQt5
 
 ## 🌟 Key Features
 
+* **Instant File Preview:** Double-click any file to open a high-speed preview window. Supports images (PNG, JPG, WebP, BMP) and text-based files (XML, Manifests, Code).
+* **Locked File Grid:** The main tree view is strictly read-only, preventing accidental file renames or edits while browsing thousands of entries.
 * **Nested Inspection:** View files inside APKs that are themselves inside a ZIP file—all in-memory without disk bloat.
-* **Sticky Search on Load:** If you have a search query active, it automatically filters any new ZIP file you load immediately.
+* **Sticky Search on Load:** Search filters and Regex patterns persist automatically across different loaded ZIP files for faster auditing.
 * **Multi-Regex & Live Search:** Treat each space-separated term as an independent Regex pattern with real-time Orange highlighting.
-* **Smart Filtering:** A "Matches Only" toggle that instantly hides all files and APKs that don't match your search terms.
 * **Bulk Structured Extraction:** Extract all highlighted files at once while maintaining their original internal folder structures.
-* **High-Contrast UI:** Neon Green (APKs) and Electric Cyan (Internal files) coding for maximum readability on dark backgrounds.
 * **Full-Width Workspace:** Optimized 90/10 column ratio ensures the file structure remains the priority.
 
 ---
@@ -25,9 +25,8 @@ APK Deep Explorer is a high-performance Python-based GUI tool built with **PyQt5
 Ensure you have **Python 3.8+** installed on your system.
 
 ### 2. Install Dependencies
-This project relies on `PyQt5`. You can install it using:
-
-`pip install PyQt5`
+This project relies on PyQt5. You can install it using the command:
+pip install PyQt5
 
 ---
 
@@ -35,29 +34,27 @@ This project relies on `PyQt5`. You can install it using:
 
 1. Clone or download the repository.
 2. Navigate to the directory in your terminal:
-   `cd /Users/jpeixoto/PythonProjects/apkExplorer/`
+   cd /Users/jpeixoto/PythonProjects/apkExplorer/
 3. Launch the application:
-   `python3 apkExplorer.py`
+   python3 apkExplorer.py
 
 ---
 
 ## 📖 Power User Examples
 
 ### 1. Advanced Regex Filtering
-Enable **Regex** and type `\.xml$ \.png$`. 
-* **Result:** The explorer will instantly isolate every XML and PNG file across all APKs, hiding everything else.
+Enable **Regex** and type: \.xml$ \.png$
+* **Result:** The explorer isolates every XML and PNG file across all APKs instantly.
 
-### 2. Bulk Extraction (Maintaining Structure)
-Need every icon from 10 different APKs?
-1. Type `icon` or `\.png$` in the search bar.
-2. Check **Matches Only**.
-3. Right-click and select **"Extract ALL Highlighted Files"**.
-* **Result:** All files are saved into folders named after their parent APKs, with their internal subfolders (e.g., `res/drawable/`) recreated exactly.
+### 2. In-Memory Preview
+Don't waste time extracting files just to see what they are. Simply **double-click** a .png to view the asset or an AndroidManifest.xml to read its content in a dark-themed text viewer.
+
+### 3. Bulk Extraction (Maintaining Structure)
+1. Search for a specific asset type (e.g., \.webp$).
+2. Right-click anywhere and select **"Extract ALL Highlighted Files"**.
+* **Result:** Files are saved into folders named after their parent APKs, with their internal subfolders recreated exactly (e.g., Output/BaseAPK/res/drawable/icon.webp).
 
 
-
-### 3. Automatic "Snap-to-Result"
-As you refine your search, the explorer automatically scrolls to the first match it finds, eliminating the need to hunt through thousands of lines manually.
 
 ---
 
