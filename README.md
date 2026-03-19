@@ -17,16 +17,6 @@ A high-performance, lightweight static analysis tool for exploring Android APKs,
 * **Bulk Structured Extraction:** Extract all highlighted files at once while maintaining their original internal folder structures.
 * **Full-Width Workspace:** Optimized 90/10 column ratio ensures the file structure remains the priority.
 
-## 🌟 Key Features V1.01
-* **Dual-Tab Preview:** Double-click any file for immediate inspection.
-    * [cite_start]**XML:** Decodes binary Android XML (Manifests/Layouts) into readable text[cite: 1].
-    * [cite_start]**DEX:** Provides a Java Source tab using Androguard[cite: 1].
-    * [cite_start]**Raw:** Always available for binary or text fallback[cite: 1].
-* [cite_start]**Robust AXML Decoder:** Custom logic to handle modern, obfuscated, or variable-length string pools in Android bundles[cite: 1].
-* [cite_start]**Stability Fixes:** Includes global exception hooks and memory retention to prevent the app from "disappearing" on launch[cite: 1].
-* **Locked File Grid:** Read-only tree view ensures data integrity during massive audits.
-* [cite_start]**Full-Width Workspace:** Smart column stretching ensures the file structure remains the priority[cite: 1].
-
 ## 🌟 Key Features V1.02
 ### 🔍 Advanced Exploration & Navigation
 * **Multi-Archive Support:** Load multiple APKs or ZIPs simultaneously into a unified Project Explorer.
